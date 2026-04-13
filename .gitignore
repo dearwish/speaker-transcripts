@@ -1,0 +1,14 @@
+# Cached whisper results
+whisper_cache_*.json
+
+# Audio files
+*.m4a
+*.wav
+
+# Transcripts (output files)
+transcript*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
