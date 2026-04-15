@@ -147,27 +147,28 @@ def _merge_transcript_with_speakers(segments, diarization) -> str:
                 best_speaker = speaker
         return best_speaker
 
-    lines = []
+    blocks = []
     prev_speaker = None
+    current_texts = []
 
     for seg in segments:
         speaker = get_speaker(seg["start"], seg["end"])
         text = seg["text"].strip()
+        if not text:
+            continue
 
-        # Print speaker label only when it changes
         if speaker != prev_speaker:
-            lines.append(f"\n{speaker}:")
+            if prev_speaker is not None and current_texts:
+                blocks.append(f"{prev_speaker}: {' '.join(current_texts)}")
             prev_speaker = speaker
+            current_texts = [text]
+        else:
+            current_texts.append(text)
 
-        lines.append(text)
+    if prev_speaker is not None and current_texts:
+        blocks.append(f"{prev_speaker}: {' '.join(current_texts)}")
 
-    return "\n".join(lines)
-
-
-def _fmt_time(seconds: float) -> str:
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+    return "\n".join(blocks)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
