@@ -4,6 +4,8 @@
 #   make run FILE_ID=<id> LANGUAGE=ru
 #   make rerun FILE_ID=<id>              # skip whisper, reuse cached result
 
+export PATH := $(shell python3 -c "import sys, os; print(os.path.dirname(sys.executable))"):$(PATH)
+
 FILE_ID   ?=
 LANGUAGE  ?= auto
 OUTPUT    ?= transcript.txt
