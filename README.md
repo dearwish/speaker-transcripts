@@ -18,11 +18,14 @@ Uses OpenAI Whisper (medium) for transcription and pyannote.audio for speaker di
 # Full run (whisper + diarization)
 make run FILE_ID=<google_drive_file_id>
 
-# With language hint
-make run FILE_ID=<id> LANGUAGE=ru
+# With language hint and custom output file
+make run FILE_ID=<id> LANGUAGE=ru OUTPUT=transcript-27.txt
 
 # Rerun diarization only (skip whisper, use cached result)
 make rerun FILE_ID=<id>
+
+# Move transcript files to ./archive
+make archive
 
 # Clean cached whisper results
 make clean
