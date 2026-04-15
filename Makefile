@@ -10,7 +10,7 @@ FILE_ID   ?=
 LANGUAGE  ?= auto
 OUTPUT    ?= transcript.txt
 
-.PHONY: run rerun clean
+.PHONY: run rerun archive clean
 
 # Full run: download → whisper → diarize
 run:
@@ -21,6 +21,11 @@ run:
 rerun:
 	@test -n "$(FILE_ID)" || (echo "Error: FILE_ID is required. Usage: make rerun FILE_ID=<id>" && exit 1)
 	modal run transcribe.py --file-id $(FILE_ID) --language $(LANGUAGE) --output $(OUTPUT) --skip-whisper
+
+# Move transcript files to ./archive
+archive:
+	@mkdir -p archive
+	@mv -v transcript*.txt archive/ 2>/dev/null || echo "No transcript files to archive."
 
 # Remove cached whisper results
 clean:
