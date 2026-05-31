@@ -27,6 +27,7 @@ rerun:
 # Move finished transcripts from ./transcripts to ./archive
 archive:
 	@mkdir -p archive
+	@mv -v audio/*.m4a archive/ 2>/dev/null || echo "No audio files to archive."
 	@mv -v transcripts/*.txt archive/ 2>/dev/null || echo "No transcript files to archive."
 
 # Remove cached whisper results
