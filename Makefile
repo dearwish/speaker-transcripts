@@ -24,7 +24,7 @@ rerun:
 	@test -n "$(FILE_ID)" || (echo "Error: FILE_ID is required. Usage: make rerun FILE_ID=<id>" && exit 1)
 	modal run transcribe.py --file-id $(FILE_ID) --language $(LANGUAGE) --output "$(OUTPUT)" --skip-whisper
 
-# Move finished transcripts from ./transcripts to ./archive
+# Move finished transcripts and their audio to ./archive
 archive:
 	@mkdir -p archive
 	@mv -v audio/*.m4a archive/ 2>/dev/null || echo "No audio files to archive."
