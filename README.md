@@ -15,10 +15,13 @@ Uses OpenAI Whisper (medium) for transcription and pyannote.audio for speaker di
 ## Usage
 
 ```bash
-# Full run (whisper + diarization)
+# Full run (whisper + diarization). Output is saved as "<original Drive name>.txt"
 make run FILE_ID=<google_drive_file_id>
 
-# With language hint and custom output file
+# With language hint
+make run FILE_ID=<id> LANGUAGE=ru
+
+# Override the auto-derived output name
 make run FILE_ID=<id> LANGUAGE=ru OUTPUT=transcript-27.txt
 
 # Rerun diarization only (skip whisper, use cached result)
@@ -31,8 +34,11 @@ make archive
 make clean
 ```
 
+By default (`OUTPUT=auto`) the transcript file is named after the file's original
+Google Drive name with a `.txt` suffix. Pass `OUTPUT=<name>.txt` to override.
+
 Or directly:
 
 ```bash
-modal run transcribe.py --file-id <google_drive_file_id> [--language ru|he|auto] [--skip-whisper]
+modal run transcribe.py --file-id <google_drive_file_id> [--language ru|he|auto] [--output auto|<name>.txt] [--skip-whisper]
 ```

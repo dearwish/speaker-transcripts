@@ -1,9 +1,12 @@
 """
 Usage:
-    modal run transcribe.py --file-id <google_drive_file_id> [--language ru|he|auto]
+    modal run transcribe.py --file-id <google_drive_file_id> [--language ru|he|auto] [--output auto|<name>.txt]
 
 Example:
     modal run transcribe.py --file-id <google_drive_file_id>
+
+By default (--output auto) the transcript is saved under the file's original
+Google Drive name with a .txt suffix. Pass --output <name>.txt to override.
 """
 
 import modal
@@ -34,6 +37,10 @@ image = (
 )
 
 app = modal.App("transcribe-audio", image=image)
+
+# ── Local directories ─────────────────────────────────────────────────────────
+AUDIO_DIR = "audio"              # downloaded intermediate audio + cached whisper results
+TRANSCRIPTS_DIR = "transcripts"  # output .txt transcripts
 
 # ── Secrets — set these in Modal dashboard or via `modal secret create` ──────
 #   HF_TOKEN: HuggingFace token (required for pyannote speaker diarization)
@@ -171,18 +178,77 @@ def _merge_transcript_with_speakers(segments, diarization) -> str:
     return "\n".join(blocks)
 
 
+def _resolve_drive_filename(file_id: str):
+    """Best-effort fetch of the file's original name from Google Drive.
+
+    Reads the Content-Disposition header from the Drive download endpoint with a
+    1-byte range request, so it costs ~nothing and never downloads the file.
+    Returns the original filename (str) or None if it can't be determined.
+    """
+    import re
+    import urllib.parse
+    import urllib.request
+
+    url = (
+        "https://drive.usercontent.google.com/download"
+        f"?id={file_id}&export=download&confirm=t"
+    )
+    req = urllib.request.Request(url, headers={"Range": "bytes=0-0"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            content_disposition = resp.headers.get("Content-Disposition", "") or ""
+    except Exception as e:
+        print(f"[name] Could not resolve original filename: {e}")
+        return None
+
+    # RFC 5987 form: filename*=UTF-8''<percent-encoded>
+    m = re.search(r"filename\*=(?:UTF-8'')?([^;]+)", content_disposition, re.IGNORECASE)
+    if m:
+        return urllib.parse.unquote(m.group(1).strip().strip('"'))
+
+    # Plain form: filename="..." — http.client decodes header bytes as latin-1,
+    # so re-encode to recover the original UTF-8 name.
+    m = re.search(r'filename="?([^";]+)"?', content_disposition)
+    if m:
+        name = m.group(1)
+        try:
+            name = name.encode("iso-8859-1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+        return name
+
+    return None
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 @app.local_entrypoint()
 def main(
     file_id: str,
     language: str = "auto",       # "auto", "ru", "he"
-    output: str = "transcript.txt",
+    output: str = "auto",          # "auto" → derive from the Drive filename
     skip_whisper: bool = False,    # reuse cached whisper result
 ):
     import json
     import gdown
 
-    cache_path = f"whisper_cache_{file_id}.json"
+    os.makedirs(AUDIO_DIR, exist_ok=True)
+    os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
+
+    cache_path = os.path.join(AUDIO_DIR, f"whisper_cache_{file_id}.json")
+    audio_path = os.path.join(AUDIO_DIR, f"recording_{file_id}.m4a")
+
+    # ── Resolve output filename ──────────────────────────────────────────────
+    if output == "auto":
+        original = _resolve_drive_filename(file_id)
+        if original:
+            output = os.path.splitext(os.path.basename(original))[0] + ".txt"
+            print(f"[name] Output filename derived from Drive: {output}")
+        else:
+            output = f"transcript_{file_id}.txt"
+            print(f"[name] Could not resolve Drive filename; using {output}")
+
+    # A bare filename lands in TRANSCRIPTS_DIR; an explicit path is respected.
+    output_path = output if os.path.dirname(output) else os.path.join(TRANSCRIPTS_DIR, output)
 
     # ── Step 1: Whisper (skip if cached) ─────────────────────────────────────
     if skip_whisper:
@@ -192,11 +258,10 @@ def main(
     else:
         print(f"[download] Downloading from Google Drive (id={file_id})...")
         url = f"https://drive.google.com/uc?id={file_id}"
-        local_path = "recording_input.m4a"
-        gdown.download(url, local_path, quiet=False)
+        gdown.download(url, audio_path, quiet=False)
 
         print("[upload] Sending audio to Modal for transcription...")
-        audio_bytes = open(local_path, "rb").read()
+        audio_bytes = open(audio_path, "rb").read()
         whisper_result = transcribe.remote(audio_bytes, language=language)
 
         # Cache the Whisper result locally
@@ -205,16 +270,15 @@ def main(
         print(f"[cache] Whisper result saved to {cache_path}")
 
     # ── Step 2: Diarization ──────────────────────────────────────────────────
-    local_path = "recording_input.m4a"
-    audio_bytes = open(local_path, "rb").read()
+    audio_bytes = open(audio_path, "rb").read()
 
     print("[upload] Sending audio to Modal for diarization...")
     transcript = diarize.remote(audio_bytes, whisper_result)
 
-    with open(output, "w", encoding="utf-8") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(transcript)
 
     print(f"\n{'─'*60}")
     print(transcript)
     print(f"{'─'*60}")
-    print(f"\n✅ Saved to {output}")
+    print(f"\n✅ Saved to {output_path}")

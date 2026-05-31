@@ -1,15 +1,18 @@
-# Cached whisper results
-whisper_cache_*.json
+# Intermediate audio files + cached whisper results
+audio/
 
-# Audio files
+# Output transcripts
+transcripts/
+archive/
+
+# Stray audio (if ever written outside audio/)
 *.m4a
 *.wav
-
-# Transcripts (output files)
-transcript*.txt
-archive/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+
+# macOS
+.DS_Store
