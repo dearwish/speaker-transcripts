@@ -54,7 +54,7 @@ secrets = [modal.Secret.from_name("huggingface-secret")]
 # ── Step 1: Whisper transcription (the expensive part) ────────────────────────
 @app.function(
     gpu="T4",
-    timeout=600,
+    timeout=7200,
 )
 def transcribe(audio_bytes: bytes, language: str = "auto") -> dict:
     import tempfile
@@ -90,7 +90,7 @@ def transcribe(audio_bytes: bytes, language: str = "auto") -> dict:
 # ── Step 2: Speaker diarization ──────────────────────────────────────────────
 @app.function(
     gpu="T4",
-    timeout=600,
+    timeout=7200,
     secrets=secrets,
 )
 def diarize(audio_bytes: bytes, whisper_result: dict) -> str:
