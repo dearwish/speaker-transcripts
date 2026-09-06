@@ -3,7 +3,7 @@ Usage:
     modal run transcribe.py --file-id <google_drive_file_id> [--language ru|he|auto] [--output auto|<name>.txt]
 
 Example:
-    modal run transcribe.py --file-id <google_drive_file_id>
+    modal run transcribe.py --file-id <google_drive_file_id> --language ru
 
 By default (--output auto) the transcript is saved under the file's original
 Google Drive name with a .txt suffix. Pass --output <name>.txt to override.
